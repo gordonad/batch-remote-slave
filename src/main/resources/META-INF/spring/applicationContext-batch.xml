@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+	<!-- ChunkProcessChunkHandler to the writer bean -->
+	<bean id="slaveChunkHandler"
+		class="org.springframework.batch.integration.chunk.ChunkProcessorChunkHandler">
+		<property name="chunkProcessor">
+			<bean class="org.springframework.batch.core.step.item.SimpleChunkProcessor">
+				<property name="itemWriter" ref="productWriter" />
+				<property name="itemProcessor">
+					<bean
+						class="org.springframework.batch.item.support.PassThroughItemProcessor" />
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="productWriter"
+		class="com.gordondickens.bcf.batch.ProductItemWriter" />
+
+	<!-- AOP Logging Config -->
+	<bean id="logAdvice" class="com.gordondickens.bcf.logging.LogAdvice" />
+	<bean id="eventAdvice"
+		class="com.gordondickens.bcf.jmx.StepExecutionApplicationEventAdvice" />
+
+	<aop:config>
+		<aop:aspect id="moduleLogging" ref="logAdvice">
+			<aop:after
+				pointcut="execution( * org.springframework.batch.item.ItemWriter+.write(..)) and args(item)"
+				method="doStronglyTypedLogging" />
+		</aop:aspect>
+		<aop:aspect ref="eventAdvice">
+			<aop:before
+				pointcut="execution( * org.springframework.batch..Step+.execute(..)) and args(stepExecution)"
+				method="before" />
+			<aop:after
+				pointcut="execution( * org.springframework.batch..Step+.execute(..)) and args(stepExecution)"
+				method="after" />
+			<aop:after-throwing throwing="t"
+				pointcut="execution( * org.springframework.batch..Step+.execute(..)) and args(stepExecution)"
+				method="onError" />
+		</aop:aspect>
+	</aop:config>
+</beans>
